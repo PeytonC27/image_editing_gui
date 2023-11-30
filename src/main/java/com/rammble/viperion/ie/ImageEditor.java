@@ -1,7 +1,6 @@
 package com.rammble.viperion.ie;
 
 import javax.imageio.ImageIO;
-import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 
@@ -47,6 +46,10 @@ public class ImageEditor {
         System.out.println("Image was saved.");
     }
 
+    /**
+     * Applies a 1-to-1 filter to an image, changing every pixel based on the desired filter
+     * @param saveOptions
+     */
     private void applyFilter(ImageSaveSettings saveOptions) {
         int width = imageWidth;
         int height = imageHeight;
@@ -59,53 +62,20 @@ public class ImageEditor {
         // setting each pixel in the file
         for (int y = 0; y < pixels[0].length; y++) {
             for (int x = 0; x < pixels.length; x++) {
-
-                IMGColor color = new IMGColor(image.getRGB(x, y));
+                // get the color
+                int color = image.getRGB(x, y);
 
                 // change the colorRGB based on the specified options and get the rgb
-                modifyColorFromOption(saveOptions, color);
+                int rgb = modifyColorFromOption(saveOptions, color);
 
-                newImage.setRGB(x, y, color.rgb());
+                // set the new image's color
+                newImage.setRGB(x, y, rgb);
             }
         }
 
         saveImage(newImage, saveLocation);
     }
 
-    /**
-     * Replaces all instances of the color to replace with the new color
-     * <p>
-     * WIP
-     *
-     * @param toReplace
-     * @param newColor
-     */
-    public void replaceColor(Color toReplace, Color newColor) {
-        int newWidth = imageWidth;
-        int newHeight = imageHeight;
-
-        // making a new image
-        BufferedImage newImage = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_ARGB);
-
-        int[][] pixels = new int[newWidth][newHeight];
-
-        // setting each pixel in the file
-        for (int y = 0; y < pixels[0].length; y++) {
-            for (int x = 0; x < pixels.length; x++) {
-                IMGColor currentImageColor = new IMGColor(image.getRGB(x, y));
-                IMGColor colorComparison = new IMGColor(toReplace.getRGB());
-
-                boolean colorsAreClose = currentImageColor.isSimilarTo(colorComparison, 200);
-
-                if (colorsAreClose) newImage.setRGB(x, y, newColor.getRGB());
-                else newImage.setRGB(x, y, currentImageColor.rgb());
-            }
-        }
-
-        saveImage(newImage, saveLocation);
-
-        System.out.println("Colors were replaced.");
-    }
 
     /**
      * Compresses the image and saves it, the compression level is based on the
@@ -124,6 +94,7 @@ public class ImageEditor {
         int tempWidth = imageWidth - pixelWidthLoss;
         int tempHeight = imageHeight - pixelHeightLoss;
 
+        // calculate the new width/height of the output image
         int newWidth = (tempWidth - pixelWidthLoss + compressionMultiplier) / compressionMultiplier;
         int newHeight = (tempHeight - pixelHeightLoss + compressionMultiplier) / compressionMultiplier;
         int newImageX = 0, newImageY = 0;
@@ -135,6 +106,7 @@ public class ImageEditor {
         for (int y = 0; y < tempHeight; y += compressionMultiplier) {
             for (int x = 0; x < tempWidth; x += compressionMultiplier) {
 
+                // calculate the average RGB of the area to compress, then apply it to the new image
                 int averageColor = averageRGB(x, y, compressionMultiplier);
                 newImage.setRGB(newImageX, newImageY, averageColor);
                 newImageX++;
@@ -155,9 +127,11 @@ public class ImageEditor {
     public void pixelate(int pixelSize) {
         if (pixelSize == 0) return;
 
+        // calculate the pixels that will be lost during pixelation
         int pixelWidthLoss = imageWidth % pixelSize;
         int pixelHeightLoss = imageHeight % pixelSize;
 
+        // get the new image's dimensions
         int newWidth = imageWidth - pixelWidthLoss;
         int newHeight = imageHeight - pixelHeightLoss;
 
@@ -167,6 +141,7 @@ public class ImageEditor {
         // setting each pixel in the file
         for (int y = 0; y < newHeight; y += pixelSize) {
             for (int x = 0; x < newWidth; x += pixelSize) {
+                // get the average color, then paint a square in the new image
                 int averageColor = averageRGB(x, y, pixelSize);
                 paintSquare(newImage, averageColor, x, y, pixelSize);
             }
@@ -190,19 +165,19 @@ public class ImageEditor {
         int redSum = 0;
         int greenSum = 0;
         int blueSum = 0;
-        IMGColor color;
+        int color;
         for (int i = x; i < x + s && i < imageWidth; i++) {
             for (int j = y; j < y + s && j < imageHeight; j++) {
-                color = new IMGColor(image.getRGB(i, j));
+                color = image.getRGB(i, j);
 
-                redSum += color.red;
-                greenSum += color.green;
-                blueSum += color.blue;
+                redSum += ColorHelper.getRed(color);
+                greenSum += ColorHelper.getGreen(color);
+                blueSum += ColorHelper.getBlue(color);
             }
         }
 
         int count = s * s;
-        return IMGColor.rgb(redSum / count, greenSum / count, blueSum / count);
+        return ColorHelper.rgb(redSum / count, greenSum / count, blueSum / count);
     }
 
     /**
@@ -230,17 +205,16 @@ public class ImageEditor {
      *
      * @param option
      * @param color
-     * @return
+     * @return the new color
      */
-    private void modifyColorFromOption(ImageSaveSettings option, IMGColor color) {
+    private int modifyColorFromOption(ImageSaveSettings option, int color) {
         switch (option) {
             case BLACK_AND_WHITE:
-                color.blackAndWhite();
-                break;
+                return ColorHelper.blackAndWhite(color);
             case INVERT_COLORS:
-                color.invert();
-                break;
+                return ColorHelper.invert(color);
             default:
+                return 0;
         }
     }
 
