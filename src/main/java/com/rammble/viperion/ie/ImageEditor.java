@@ -1,8 +1,13 @@
 package com.rammble.viperion.ie;
 
+import javafx.scene.shape.Circle;
+
 import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.geom.Ellipse2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.util.ArrayList;
 
 public class ImageEditor {
 
@@ -35,12 +40,14 @@ public class ImageEditor {
      * @param chosenValue the value to be utilized in options requiring specific ratios, sizes, etc
      */
     public void saveNewImage(ImageSaveSettings saveOptions, int chosenValue) {
-        if (saveOptions == ImageSaveSettings.NORMAL || saveOptions == ImageSaveSettings.INVERT_COLORS || saveOptions == ImageSaveSettings.BLACK_AND_WHITE)
+        if (saveOptions.getValue() >= 0)
             applyFilter(saveOptions);
         else if (saveOptions == ImageSaveSettings.COMPRESS)
             compressImage(chosenValue);
         else if (saveOptions == ImageSaveSettings.PIXELATE)
             pixelate(chosenValue);
+        else if (saveOptions == ImageSaveSettings.POINTILLISM)
+            pointillism(chosenValue);
 
 
         System.out.println("Image was saved.");
@@ -73,7 +80,7 @@ public class ImageEditor {
             }
         }
 
-        saveImage(newImage, saveLocation);
+        saveImage(newImage);
     }
 
 
@@ -115,7 +122,7 @@ public class ImageEditor {
             newImageX = 0;
         }
 
-        saveImage(newImage, saveLocation);
+        saveImage(newImage);
 
         System.out.println("Image was compressed.");
         System.out.println("The image lost " + pixelWidthLoss + " pixels on the right, and " + pixelHeightLoss + " pixels on the bottom");
@@ -147,10 +154,48 @@ public class ImageEditor {
             }
         }
 
-        saveImage(newImage, saveLocation);
+        saveImage(newImage);
 
         System.out.println("Image was pixelated.");
         System.out.println("The image lost " + pixelWidthLoss + " pixels on the right, and " + pixelHeightLoss + " pixels on the bottom");
+    }
+
+    public void pointillism(int circleDiameter) {
+        if (circleDiameter == 0)
+            return;
+
+        // create new image and set background to white
+        BufferedImage newImage = new BufferedImage(imageWidth, imageHeight, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = newImage.createGraphics();
+        graphics.setPaint(new Color(0, 0, 0, 0));
+        graphics.fillRect(-100,-100,imageWidth+200,imageHeight+200);
+
+        // the density (number of circles in the output) should be proportional to the diameter of the desired circle
+        int density = (imageWidth * imageHeight) / (circleDiameter);
+
+        int x = 0, y = 0;
+
+        // get the image data as a 2D array
+        for (int i = 0; i < density; i++) {
+            try {
+                // get random coordinates
+                x = (int) (Math.random() * imageWidth);
+                y = (int) (Math.random() * imageHeight);
+
+                // draw the circles
+                int averageColor = averageRGB(x, y, circleDiameter);
+                int variance = (int) ((Math.random() * circleDiameter) - (circleDiameter/2));
+                paintCircle(newImage, averageColor, x, y, circleDiameter + variance);
+            } catch (Exception exception) {
+                System.out.println("Could not pointilize at point (" + x + ", " + y + ")");
+                exception.printStackTrace();
+                return;
+            }
+        }
+
+        saveImage(newImage);
+
+        System.out.println("Pointillism applied");
     }
 
     /**
@@ -165,6 +210,7 @@ public class ImageEditor {
         int redSum = 0;
         int greenSum = 0;
         int blueSum = 0;
+        int count = 0;
         int color;
         for (int i = x; i < x + s && i < imageWidth; i++) {
             for (int j = y; j < y + s && j < imageHeight; j++) {
@@ -173,10 +219,11 @@ public class ImageEditor {
                 redSum += ColorHelper.getRed(color);
                 greenSum += ColorHelper.getGreen(color);
                 blueSum += ColorHelper.getBlue(color);
+
+                count++;
             }
         }
 
-        int count = s * s;
         return ColorHelper.rgb(redSum / count, greenSum / count, blueSum / count);
     }
 
@@ -196,6 +243,26 @@ public class ImageEditor {
             }
         }
     }
+
+    private void paintCircle(BufferedImage image, int rgb, int x, int y, int diameter) {
+        Graphics2D graphics = (Graphics2D) image.getGraphics();
+
+        // instead of the coordinate being the top left of the circle
+        // we want it to be the center, so we need to translate the circle
+        x -= diameter/2;
+        y -= diameter/2;
+
+        // get the components of each color
+        int r = ColorHelper.getRed(rgb);
+        int g = ColorHelper.getGreen(rgb);
+        int b = ColorHelper.getBlue(rgb);
+
+        // drawing the filled circle
+        // TODO: the alphas drastically change the output, maybe mess with them?
+        graphics.setColor(new Color(r, g, b));
+        graphics.fillOval(x, y, diameter, diameter);
+    }
+
 
     // ==================== IMAGE SAVING METHODS ==================== //
 
@@ -224,9 +291,8 @@ public class ImageEditor {
      * Saves a new BufferedImage at the specified save location
      *
      * @param newImage
-     * @param saveLocation
      */
-    private void saveImage(BufferedImage newImage, String saveLocation) {
+    private void saveImage(BufferedImage newImage) {
         try {
             File f = new File(saveLocation);
 
@@ -242,7 +308,7 @@ public class ImageEditor {
      * @return
      */
     public boolean needsNumericalOption(ImageSaveSettings option) {
-        return option == ImageSaveSettings.COMPRESS || option == ImageSaveSettings.PIXELATE;
+        return option.getValue() < 0;
     }
 
     private static class ITAParseException extends Exception {

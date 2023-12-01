@@ -42,6 +42,7 @@ public class ViperionView implements Initializable {
     private TextField newImageName, optionSetting;
 
     ViperionController controller = new ViperionController();
+    private ImageEditor imageEditor;
 
     /**
      * This is called after the root elements have been added, instantiating the fields we need to add data to
@@ -54,6 +55,12 @@ public class ViperionView implements Initializable {
         Class<ImageSaveSettings> e = ImageSaveSettings.class;
         imageOptionSelector.getItems().addAll(Arrays.stream(e.getEnumConstants()).toList());
         imageOptionSelector.setOnAction(this::updateOptionTextFieldDisplay);
+
+        try {
+            loadSaveData();
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     @FXML
@@ -121,7 +128,7 @@ public class ViperionView implements Initializable {
                 File outFile = new File(outImagePath);
 
                 // set up the image editor and get the image option selection
-                ImageEditor imageEditor = new ImageEditor(ogImagePath, outImagePath);
+                imageEditor = new ImageEditor(ogImagePath, outImagePath);
                 ImageSaveSettings option = imageOptionSelector.getValue();
 
                 // determine if the image needs an option
@@ -174,9 +181,35 @@ public class ViperionView implements Initializable {
      */
     private void updateOptionTextFieldDisplay(ActionEvent event) {
         ImageSaveSettings currentOption = imageOptionSelector.getValue();
-        if (currentOption == ImageSaveSettings.COMPRESS || currentOption == ImageSaveSettings.PIXELATE)
+        if (currentOption.getValue() < 0)
             optionSetting.setVisible(true);
         else
             optionSetting.setVisible(false);
+    }
+
+    /**
+     * Loads previously saved data
+     */
+    private void loadSaveData() throws Exception {
+        try {
+
+            // open image
+            String image = "C:\\Users\\peyto\\OneDrive\\Pictures\\Screenshots\\Screenshot 2023-10-12 140231.png";
+            imageFile = new File(image);
+            displayMessage(imageFileLabel, "Image Selected: " + imageFile.getName());
+
+            // update view
+            displayImage();
+
+            // open directory
+            String saveLocation = "C:\\Users\\peyto\\Downloads";
+            directory = new File(saveLocation);
+            displayMessage(directoryFileLabel, "Save Location: " + directory.getAbsolutePath());
+
+            // instantiate imageEditor
+            imageEditor = new ImageEditor(image, saveLocation);
+        } catch (Exception e) {
+
+        }
     }
 }
